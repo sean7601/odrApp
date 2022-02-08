@@ -10,7 +10,7 @@ odrApp.enter = function() {
             html += '<div class="form-group">'
                 html += '<label>Gain Time</label>'
                 html += '<div class="input-group mb-3">'
-                    html += '<input type="number" class="form-control" id="gainTime">'
+                    html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="gainTime">'
                     html += '<div class="input-group-append">'
                         html += '<button class="btn btn-outline-secondary" onclick=odrApp.makeCurrent("gainTime") type="button">Now</button>'
                     html += '</div>'
@@ -23,7 +23,7 @@ odrApp.enter = function() {
             html += '<div class="form-group">'
                 html += '<label>CPA Time</label>'
                 html += '<div class="input-group mb-3">'
-                    html += '<input type="number" class="form-control" id="cpaTime">'
+                    html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="cpaTime">'
                     html += '<div class="input-group-append">'
                         html += '<button class="btn btn-outline-secondary" onclick=odrApp.makeCurrent("cpaTime") type="button">Now</button>'
                     html += '</div>'
@@ -35,7 +35,7 @@ odrApp.enter = function() {
             html += '<div class="form-group">'
                 html += '<label>Lost Time</label>'
                 html += '<div class="input-group mb-3">'
-                    html += '<input type="number" class="form-control" id="lostTime">'
+                    html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="lostTime">'
                     html += '<div class="input-group-append">'
                         html += '<button class="btn btn-outline-secondary" onclick=odrApp.makeCurrent("lostTime") type="button">Now</button>'
                     html += '</div>'
@@ -49,21 +49,21 @@ odrApp.enter = function() {
         html += "<div class='col'>"
             html += '<div class="form-group">'
                 html += '<label>CPA Range</label>'
-                html += '<input type="number" class="form-control" id="cpaRange">'
+                html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="cpaRange">'
             html += '</div>'    
         html += '</div>'
 
         html += "<div class='col'>"
             html += '<div class="form-group">'
                 html += '<label>CPA Bearing</label>'
-                html += '<input type="number" class="form-control" id="bearing">'
+                html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="bearing">'
             html += '</div>'
         html += '</div>'
 
         html += "<div class='col'>"
             html += '<div class="form-group">'
                 html += '<label>CPA Speed</label>'
-                html += '<input type="number" class="form-control" id="speed">'
+                html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="speed">'
             html += '</div>'    
         html += '</div>'
     html += '</div>'
@@ -72,7 +72,7 @@ odrApp.enter = function() {
         html += "<div class='col'>"
             html += '<div class="form-group">'
                 html += '<label>Bearing Trend</label>'
-                html += '<select class="form-control" id="bearingTrend">'
+                html += '<select onchange="odrApp.updatePreviewFromUI()" class="form-control" id="bearingTrend">'
                     html += '<option value="increasing">Increasing</option>'
                     html += '<option value="decreasing">Decreasing</option>'
                 html += '</select>'
@@ -81,20 +81,24 @@ odrApp.enter = function() {
         html += "<div class='col'>"
             html += '<div class="form-group">'
                 html += '<label>Drift Course</label>'
-                html += '<input type="number" class="form-control" id="driftCourse">'
+                html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="driftCourse">'
             html += '</div>'
         html += '</div>'
 
         html += "<div class='col'>"
             html += '<div class="form-group">'
                 html += '<label>Drift Speed</label>'
-                html += '<input type="number" class="form-control" id="driftSpeed">'
+                html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="driftSpeed">'
             html += '</div>'
         html += '</div>'
     html += '</div>'
 
-    html += "<button class='btn btn-success' onclick='odrApp.getOdrFromUI()'>Save</button>"
+    html += "<div id='previewArea'></div>"
+
+    html += "<button class='btn btn-success' onclick='odrApp.getOdrFromUI()'>Add to Log</button>"
     html += "<button class='btn btn-secondary ml-3' onclick='odrApp.clearUI()'>Clear</button>"
+    
+    
 
     html += "<hr>"
     $("#inputs").html(html);
@@ -106,7 +110,6 @@ odrApp.enter = function() {
     html = "";
 
     html += "<button class='btn btn-primary' onclick='odrApp.viewList()'>List</button>";
-    html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewPlot()'>Polar Plot</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewGraphs()'>Graphs</button>";
     
     html += "<div id='odrData'>"
@@ -119,7 +122,6 @@ odrApp.enter = function() {
 
 odrApp.viewGraphs = function(){
     var html = "<button class='btn btn-primary' onclick='odrApp.viewList()'>List</button>";
-    html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewPlot()'>Polar Plot</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewGraphs()'>Graphs</button>";
     
     html += "<canvas width='500' height='300' id='odrVsSpeed'></canvas>";
@@ -142,6 +144,7 @@ odrApp.clearUI = function(){
     $("#bearing").val("")
     $("#bearingTrend").val("increasing")
     $("#speed").val("")
+    $("#previewArea").html("")
 }
 
 odrApp.getOdrFromUI = function(){
@@ -157,8 +160,53 @@ odrApp.getOdrFromUI = function(){
 
     odrApp.addODR(bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse)
     odrApp.viewList();
+    odrApp.clearUI();
 }
 
+odrApp.updatePreviewFromUI = function(){
+    var gainTime = $("#gainTime")[0]._flatpickr.selectedDates[0];
+    var cpaTime = $("#cpaTime")[0]._flatpickr.selectedDates[0];
+    var lostTime = $("#lostTime")[0]._flatpickr.selectedDates[0];
+    var cpaRange = parseFloat($("#cpaRange").val()) || 0;
+    var bearingTrend = $("#bearingTrend").val() || "increasing";
+    var bearing = parseFloat($("#bearing").val()) || 0;
+    var speed = parseFloat($("#speed").val()) || 0;
+    var driftCourse = parseFloat($("#driftCourse").val()) || 0;
+    var driftSpeed = parseFloat($("#driftSpeed").val()) || 0;
+
+    var odr = odrApp.formatODR(bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse);
+    console.log(odr)
+    console.log(bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse)
+    odrApp.updatePreview(odr)
+}
+
+
+odrApp.updatePreview = function(odr){
+    console.log(odr)
+    var html = ""
+    html += "<table class='table table-striped mt-3'>"
+        html += "<thead>"
+            html += "<tr>"
+                html += "<th>Course</th>"
+                html += "<th>Speed</th>"
+                html += "<th>Bow ODR</th>"
+                html += "<th>Stern ODR</th>"
+                html += "<th>Overall ODR</th>"
+            html += "</tr>"
+        html += "</thead>"
+        html += "<tbody>"
+            html += "<tr>"
+                html += "<td>" + odr.adjustedCourse.toFixed(0) + "</td>"
+                html += "<td>" + odr.adjustedSpeed.toFixed(1) + "</td>"
+                html += "<td>" + (2025*odr.upOdr).toFixed(0) + "</td>"
+                html += "<td>" + (2025*odr.downOdr).toFixed(0) + "</td>"
+                html += "<td>" + (2025*(odr.downOdr+odr.upOdr)/2).toFixed(0) + "</td>"
+            html += "</tr>"
+        html += "</tbody>"
+    html += "</table>"
+    $("#previewArea").html(html);
+
+}
 odrApp.viewList = function(){
     var html = "<button class='btn btn-primary' onclick='odrApp.viewList()'>List</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewPlot()'>Polar Plot</button>";
@@ -219,7 +267,7 @@ odrApp.setTimeInput = function(id,val){
 }
 
 
-odrApp.addODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse){
+odrApp.formatODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse){
     gain = new Date(gain)
     lost = new Date(lost)
     cpa = new Date(cpaTime)
@@ -280,9 +328,13 @@ odrApp.addODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,drif
     else{
         odr.gainAoB = (3600 + 360 + odr.gainAoB) % 360;
         odr.lostAoB = (3600 + 180 - odr.lostAoB) % 360;
-    }
+    }    
 
+    return odr;
+}
 
+odrApp.addODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse){
+    var odr = odrApp.formatODR(direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse);
     odrApp.odrs.push(odr);
 }
 
