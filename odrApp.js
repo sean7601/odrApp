@@ -122,15 +122,16 @@ odrApp.viewGraphs = function(){
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewPlot()'>Polar Plot</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewGraphs()'>Graphs</button>";
     
-    html += "<canvas width:500 height:500 id='odrVsSpeed'></canvas>";
-    html += "<canvas width:500 height:500 id='odrDiffGraph'></canvas>";
-    html += "<canvas width:500 height:500 id='odrVsTime'></canvas>";
-
+    html += "<canvas width='500' height='300' id='odrVsSpeed'></canvas>";
+    html += "<canvas width='500' height='300' id='odrDiffGraph'></canvas>";
+    html += "<canvas width='500' height='300' id='odrVsTime'></canvas>";
+    html += "<canvas width='500' height='300' id='sectorOdr'></canvas>";
     $("#displayer").html(html);
 
     odrApp.drawGraph("adjustedSpeed","overallOdr",1,2025,"Overall ODR vs Speed","Overall ODR (yds)","Speed (kts)","odrVsSpeed")
     odrApp.drawGraph("adjustedSpeed","odrDiff",1,2025,"Stern minus Bow ODR vs Speed","ODR Difference (yds)","Speed (kts)","odrDiffGraph")
     odrApp.drawGraphOverTime("overallOdr",2025,"ODR over Time","ODR (yds)","odrVsTime")
+    odrApp.drawSpiderGraph("ODR by Sector","sectorOdr")
 }
 
 odrApp.clearUI = function(){
@@ -288,6 +289,7 @@ odrApp.addODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,drif
 //draw graph with chart.js
 odrApp.drawGraph = function(xProp,yProp,xMult,yMult,title,yAxisTitle,xAxisTitle,canvasId){
     var data = [];
+    
     for(var i = 0; i < odrApp.odrs.length; i++){
         var odr = odrApp.odrs[i];
         var x = odr[xProp];
@@ -335,7 +337,8 @@ odrApp.drawGraph = function(xProp,yProp,xMult,yMult,title,yAxisTitle,xAxisTitle,
                         display: true,
                     },
                 }
-            }
+            },
+            responsive: false
         },
     });
 }
@@ -382,7 +385,110 @@ odrApp.drawGraphOverTime = function(prop,mult,title,yAxisTitle,canvasId){
                         display: true,
                     }
                 },
+            },
+            
+            responsive: false
+            
+        },
+    });
+}
+
+
+odrApp.drawSpiderGraph = function(title,canvasId){
+    var data = [];
+
+    var bins = []
+    for(var i = 0; i < 12; i++){
+        bins.push({min:i*30,max:i*30+30})  
+    }
+      
+    //sum all the ODRs in each bin
+    var sums = new Array(bins.length).fill(0);
+    var counts = new Array(bins.length).fill(0);
+    for(var i = 0; i < odrApp.odrs.length; i++){
+        var odr = odrApp.odrs[i];
+        var bowOdr = odr.upOdr * 2025;
+        var sternOdr = odr.downOdr * 2025;
+
+        var bowAngle = odr.gainAoB;
+        var sternAngle = odr.lostAoB;
+
+        for(var ii=0;ii<bins.length;ii++){
+            if(bowAngle >= bins[ii].min && bowAngle < bins[ii].max){
+                sums[ii] += bowOdr;
+                counts[ii]++;
             }
+            if(sternAngle >= bins[ii].min && sternAngle < bins[ii].max){
+                sums[ii] += sternOdr;
+                counts[ii]++;
+            }
+        }       
+    }
+
+    //calculate average ODR in each bin and make labels
+    var labels = new Array(bins.length);
+    var averages = new Array(bins.length);
+    for(var i = 0; i < bins.length; i++){
+        if(counts[i] > 0){
+            averages[i] = sums[i] / counts[i];
+        }
+        else{
+            averages[i] = 0;
+        }
+
+        labels[i] = bins[i].min + " - " + bins[i].max;
+    }
+
+
+    var ctx = document.getElementById(canvasId).getContext('2d');
+    var myChart = new Chart(ctx, {
+        title: title,
+        data: {
+            datasets: [{
+                labels: labels,
+                data: averages,
+                backgroundColor: [
+                    'rgb(28, 88, 183)',
+                    'rgb(228, 32, 42)',
+                    'rgb(221, 228, 33)',
+                    'rgb(32, 230, 68)',
+                    'rgb(193, 33, 230)',
+                    'rgb(231, 33, 206)',
+
+                    'rgb(82,100,129)',
+                    'rgb(159,101,104)',
+                    'rgb(158,160,101)',
+                    'rgb(101,161,112)',
+                    'rgb(150,102,161)',
+                    'rgb(162,102,154)',
+
+                  ]
+            }]
+        },
+        type: 'polarArea',
+        options: {
+          responsive: true,
+          scales: {
+            r: {
+              pointLabels: {
+                display: true,
+                centerPointLabels: true,
+                font: {
+                  size: 18
+                }
+              }
+            }
+          },
+          responsive: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: true,
+              text: title
+            }
+          }
         },
     });
 }
