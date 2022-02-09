@@ -130,14 +130,14 @@ odrApp.viewGraphs = function(){
     
     html += "<div class='row'>"
         html += "<canvas width='500' height='300' id='odrVsSpeed'></canvas>";
-        html += "<canvas width='500' height='300' id='odrDiffGraph'></canvas>";
+        html += "<canvas width='500' height='300' id='sectorOdr'></canvas>";
     html += "</div>";
     html += "<div class='row'>"
         html += "<canvas width='500' height='300' id='bowOdrVsSpeed'></canvas>";
         html += "<canvas width='500' height='300' id='sternOdrVsSpeed'></canvas>";
     html += "<div class='row'>"
         html += "<canvas width='500' height='300' id='odrVsTime'></canvas>";
-        html += "<canvas width='500' height='300' id='sectorOdr'></canvas>";
+        html += "<canvas width='500' height='300' id='odrDiffGraph'></canvas>";
     html += "</div>";
     $("#displayer").html(html);
 
