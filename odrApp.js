@@ -95,7 +95,9 @@ odrApp.enter = function() {
 
     html += "<div id='previewArea'></div>"
 
-    html += "<button class='btn btn-success' onclick='odrApp.getOdrFromUI()'>Add to Log</button>"
+    html += "<button class='btn btn-success ml-1' onclick='odrApp.getOdrFromUI(0)'>Save Both</button>"
+    html += "<button class='btn btn-primary ml-1' onclick='odrApp.getOdrFromUI(1)'>Save Bow</button>"
+    html += "<button class='btn btn-primary ml-1' onclick='odrApp.getOdrFromUI(-1)'>Save Stern</button>"
     html += "<button class='btn btn-secondary ml-3' onclick='odrApp.clearUI()'>Clear</button>"
     
     
@@ -124,14 +126,23 @@ odrApp.viewGraphs = function(){
     var html = "<button class='btn btn-primary' onclick='odrApp.viewList()'>List</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewGraphs()'>Graphs</button>";
     
-    html += "<canvas width='500' height='300' id='odrVsSpeed'></canvas>";
-    html += "<canvas width='500' height='300' id='odrDiffGraph'></canvas>";
-    html += "<canvas width='500' height='300' id='odrVsTime'></canvas>";
-    html += "<canvas width='500' height='300' id='sectorOdr'></canvas>";
+    html += "<div class='row'>"
+        html += "<canvas width='500' height='300' id='odrVsSpeed'></canvas>";
+        html += "<canvas width='500' height='300' id='odrDiffGraph'></canvas>";
+    html += "</div>";
+    html += "<div class='row'>"
+        html += "<canvas width='500' height='300' id='bowOdrVsSpeed'></canvas>";
+        html += "<canvas width='500' height='300' id='sternOdrVsSpeed'></canvas>";
+    html += "<div class='row'>"
+        html += "<canvas width='500' height='300' id='odrVsTime'></canvas>";
+        html += "<canvas width='500' height='300' id='sectorOdr'></canvas>";
+    html += "</div>";
     $("#displayer").html(html);
 
     odrApp.drawGraph("adjustedSpeed","overallOdr",1,2025,"Overall ODR vs Speed","Overall ODR (yds)","Speed (kts)","odrVsSpeed")
     odrApp.drawGraph("adjustedSpeed","odrDiff",1,2025,"Stern minus Bow ODR vs Speed","ODR Difference (yds)","Speed (kts)","odrDiffGraph")
+    odrApp.drawGraph("adjustedSpeed","upOdr",1,2025,"Bow ODR vs Speed","Bow ODR (yds)","Speed (kts)","bowOdrVsSpeed")
+    odrApp.drawGraph("adjustedSpeed","downOdr",1,2025,"Stern ODR vs Speed","Stern ODR (yds)","Speed (kts)","sternOdrVsSpeed")
     odrApp.drawGraphOverTime("overallOdr",2025,"ODR over Time","ODR (yds)","odrVsTime")
     odrApp.drawSpiderGraph("ODR by Sector","sectorOdr")
 }
@@ -147,7 +158,7 @@ odrApp.clearUI = function(){
     $("#previewArea").html("")
 }
 
-odrApp.getOdrFromUI = function(){
+odrApp.getOdrFromUI = function(type){
     var gainTime = $("#gainTime")[0]._flatpickr.selectedDates[0];
     var cpaTime = $("#cpaTime")[0]._flatpickr.selectedDates[0];
     var lostTime = $("#lostTime")[0]._flatpickr.selectedDates[0];
@@ -158,7 +169,7 @@ odrApp.getOdrFromUI = function(){
     var driftCourse = parseFloat($("#driftCourse").val()) || 0;
     var driftSpeed = parseFloat($("#driftSpeed").val()) || 0;
 
-    odrApp.addODR(bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse)
+    odrApp.addODR(type,bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse)
     odrApp.viewList();
     odrApp.clearUI();
 }
@@ -174,7 +185,7 @@ odrApp.updatePreviewFromUI = function(){
     var driftCourse = parseFloat($("#driftCourse").val()) || 0;
     var driftSpeed = parseFloat($("#driftSpeed").val()) || 0;
 
-    var odr = odrApp.formatODR(bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse);
+    var odr = odrApp.formatODR(0,bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse);
     console.log(odr)
     console.log(bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse)
     odrApp.updatePreview(odr)
@@ -267,39 +278,66 @@ odrApp.setTimeInput = function(id,val){
 }
 
 
-odrApp.formatODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse){
+odrApp.formatODR = function(type,direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse){
+    //types 0 is both, 1 is bow, -1 is stern
+    
     gain = new Date(gain)
     lost = new Date(lost)
     cpa = new Date(cpaTime)
 
     var odr = new Object;
-    odr.direction = direction;
-    odr.bearing = bearing;
-    odr.gain = gain;
-    odr.cpa = cpa;
-    odr.lost = lost;
     odr.cpaRange = cpaRange;
     odr.speed = speed;
     odr.driftSpeed = driftSpeed;
     odr.driftCourse = driftCourse;
 
+    odr.direction = direction;
+    odr.bearing = bearing;
+    odr.cpa = cpa;
+    if(type == 0 || type == 1){
+        odr.gain = gain;
+        odr.upTime = (cpa.getTime() - gain.getTime())/1000;//seconds
+        odr.upRange = Math.max(0,odr.upTime / 60 / 60 * odr.speed);//nautical miles
+        odr.upOdr = Math.sqrt(odr.upRange * odr.upRange + odr.cpaRange/2025 * odr.cpaRange/2025);
+    }
+    else{
+        odr.gain = null
+        odr.upTime = null;
+        odr.upRange = null;
+        odr.upOdr = null;
+    }
+
+    if(type == 0 || type == -1){
+        odr.lost = lost;
+        odr.downTime = (lost.getTime() - cpa.getTime())/1000;//seconds
+        odr.downRange = Math.max(0,odr.downTime / 60 / 60 * odr.speed);//nautical miles
+        odr.downOdr = Math.sqrt(odr.downRange * odr.downRange + odr.cpaRange/2025 * odr.cpaRange/2025);
+    }
+    else{
+        odr.lost = null
+        odr.downTime = null;
+        odr.downRange = null;
+        odr.downOdr = null;
+    }
+    
+    
+
     odr.course = (3600+odr.bearing + 90)%360;
     if(odr.direction == "decreasing"){
         odr.course = (3600+odr.bearing - 90)%360;
     }
-
-    //get cpaTime - gain in seconds
-    odr.upTime = (cpa.getTime() - gain.getTime())/1000;//seconds
-    odr.downTime = (lost.getTime() - cpa.getTime())/1000;//seconds
     
-    //get up and down range
-    odr.upRange = odr.upTime / 60 / 60 * odr.speed;//nautical miles
-    odr.downRange = odr.downTime / 60 / 60 * odr.speed;//nautical miles
 
-    odr.upOdr = Math.sqrt(odr.upRange * odr.upRange + odr.cpaRange/2025 * odr.cpaRange/2025);
-    odr.downOdr = Math.sqrt(odr.downRange * odr.downRange + odr.cpaRange/2025 * odr.cpaRange/2025);
-    odr.overallOdr = (odr.upOdr + odr.downOdr)/2;
-    odr.odrDiff = odr.downOdr - odr.upOdr;
+
+    
+    if(type == 0){
+        odr.overallOdr = (odr.upOdr + odr.downOdr)/2;
+        odr.odrDiff = odr.downOdr - odr.upOdr;
+    }
+    else{
+        odr.overallOdr = null;
+        odr.odrDiff = null;
+    }
 
     //get course and speed adjusted for drift
     var relX = odr.speed * Math.sin(odr.course * Math.PI / 180);
@@ -314,27 +352,44 @@ odrApp.formatODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,d
     odr.adjustedSpeed = Math.sqrt(absX*absX + absY*absY);
 
     
-
-    var gainTrigRatio = odr.upOdr / Math.sin(Math.PI/2);
-    odr.gainAoB = Math.asin((odr.cpaRange/2025) / gainTrigRatio) * 180 / Math.PI;
-
-    var lostTrigRatio = odr.downOdr / Math.sin(Math.PI/2);
-    odr.lostAoB = Math.asin((odr.cpaRange/2025) / lostTrigRatio) * 180 / Math.PI;
-
-    if(odr.direction == "decreasing"){
-        odr.gainAoB = (3600 + 360 - odr.gainAoB) % 360;
-        odr.lostAoB = (3600 + 180 + odr.lostAoB) % 360;
+    if(type == 0 || type == 1){
+        var gainTrigRatio = odr.upOdr / Math.sin(Math.PI/2);
+        odr.gainAoB = Math.asin((odr.cpaRange/2025) / gainTrigRatio) * 180 / Math.PI;
     }
     else{
-        odr.gainAoB = (3600 + 360 + odr.gainAoB) % 360;
-        odr.lostAoB = (3600 + 180 - odr.lostAoB) % 360;
+        odr.gainAoB = null;
+    }
+
+    if(type == 0 || type == -1){
+        var lostTrigRatio = odr.downOdr / Math.sin(Math.PI/2);
+        odr.lostAoB = Math.asin((odr.cpaRange/2025) / lostTrigRatio) * 180 / Math.PI;
+    }
+    else{
+        odr.lostAoB = null;
+    }
+
+    if(odr.direction == "decreasing"){
+        if(type == 0 || type == 1){
+            odr.gainAoB = (3600 + 360 - odr.gainAoB) % 360;
+        }
+        if(type == 0 || type == -1){
+            odr.lostAoB = (3600 + 180 + odr.lostAoB) % 360;
+        }
+    }
+    else{
+        if(type == 0 || type == 1){
+            odr.gainAoB = (3600 + 360 + odr.gainAoB) % 360;
+        }
+        if(type == 0 || type == -1){
+            odr.lostAoB = (3600 + 180 - odr.lostAoB) % 360;
+        }
     }    
 
     return odr;
 }
 
-odrApp.addODR = function(direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse){
-    var odr = odrApp.formatODR(direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse);
+odrApp.addODR = function(type,direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse){
+    var odr = odrApp.formatODR(type,direction,bearing,gain,cpaTime,lost,cpaRange,speed,driftSpeed,driftCourse);
     odrApp.odrs.push(odr);
 }
 
@@ -346,6 +401,10 @@ odrApp.drawGraph = function(xProp,yProp,xMult,yMult,title,yAxisTitle,xAxisTitle,
         var odr = odrApp.odrs[i];
         var x = odr[xProp];
         var y = odr[yProp];
+
+        if(x == null || y == null){
+            continue;   
+        }
         if(xMult != null){
             x = x * xMult;
         }
@@ -499,20 +558,21 @@ odrApp.drawSpiderGraph = function(title,canvasId){
             datasets: [{
                 labels: labels,
                 data: averages,
+                borderWidth: 0,
                 backgroundColor: [
-                    'rgb(28, 88, 183)',
-                    'rgb(228, 32, 42)',
-                    'rgb(221, 228, 33)',
-                    'rgb(32, 230, 68)',
-                    'rgb(193, 33, 230)',
-                    'rgb(231, 33, 206)',
+                    'rgba(28, 88, 183,.5)',
+                    'rgba(228, 32, 42,.5)',
+                    'rgba(221, 228, 33,.5)',
+                    'rgba(32, 230, 68,.5)',
+                    'rgba(193, 33, 230,.5)',
+                    'rgba(231, 33, 206,.5)',
 
-                    'rgb(82,100,129)',
-                    'rgb(159,101,104)',
-                    'rgb(158,160,101)',
-                    'rgb(101,161,112)',
-                    'rgb(150,102,161)',
-                    'rgb(162,102,154)',
+                    'rgba(82,100,129,.5)',
+                    'rgba(159,101,104,.5)',
+                    'rgba(158,160,101,.5)',
+                    'rgba(101,161,112,.5)',
+                    'rgba(150,102,161,.5)',
+                    'rgba(162,102,154,.5)',
 
                   ]
             }]
