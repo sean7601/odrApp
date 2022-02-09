@@ -113,6 +113,7 @@ odrApp.enter = function() {
 
     html += "<button class='btn btn-primary' onclick='odrApp.viewList()'>List</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewGraphs()'>Graphs</button>";
+    html += "<button class='btn btn-primary ml-3' onclick='odrApp.save()'>Download</button>";
     
     html += "<div id='odrData'>"
     html += "</div>";
@@ -125,6 +126,7 @@ odrApp.enter = function() {
 odrApp.viewGraphs = function(){
     var html = "<button class='btn btn-primary' onclick='odrApp.viewList()'>List</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewGraphs()'>Graphs</button>";
+    html += "<button class='btn btn-primary ml-3' onclick='odrApp.save()'>Download</button>";
     
     html += "<div class='row'>"
         html += "<canvas width='500' height='300' id='odrVsSpeed'></canvas>";
@@ -172,6 +174,20 @@ odrApp.getOdrFromUI = function(type){
     odrApp.addODR(type,bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse)
     odrApp.viewList();
     odrApp.clearUI();
+}
+
+odrApp.save = function(){
+    var odrData = JSON.stringify(odrApp.odrData);
+    //download json file
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(odrData));
+    element.setAttribute('download', "odrData.json");
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+
+
 }
 
 odrApp.updatePreviewFromUI = function(){
