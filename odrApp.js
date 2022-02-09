@@ -80,14 +80,14 @@ odrApp.enter = function() {
         html += '</div>'
         html += "<div class='col'>"
             html += '<div class="form-group">'
-                html += '<label>Drift Course</label>'
+                html += '<label>Buoy Drift Course</label>'
                 html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="driftCourse">'
             html += '</div>'
         html += '</div>'
 
         html += "<div class='col'>"
             html += '<div class="form-group">'
-                html += '<label>Drift Speed</label>'
+                html += '<label>Buoy Drift Speed</label>'
                 html += '<input onchange="odrApp.updatePreviewFromUI()" type="number" class="form-control" id="driftSpeed">'
             html += '</div>'
         html += '</div>'
