@@ -4,7 +4,15 @@ odrApp.odrs = [];
 
 odrApp.enter = function() {
     var html = "";
-
+    html += "<div class='row'>"
+        html += "<div class='col'>";
+            html += "<h3>ODR Tool</h3>"
+        html += "</div>"
+        html += "<div class='col'>"
+            html += "Upload Data: <input type='file' class='form-control' id='upload'>"
+        html += "</div>"
+    html += "</div>"
+    html += "<hr>"
     html += "<div class='row'>"
         html += "<div class='col-sm'>"
             html += '<div class="form-group">'
@@ -119,6 +127,9 @@ odrApp.enter = function() {
     html += "</div>";
 
     $("#displayer").html(html);
+
+    document.getElementById("upload").addEventListener("change", odrApp.upload, false);
+    pageid = "odrApp"
     
 
 }
@@ -177,7 +188,7 @@ odrApp.getOdrFromUI = function(type){
 }
 
 odrApp.save = function(){
-    var odrData = JSON.stringify(odrApp.odrData);
+    var odrData = JSON.stringify(odrApp.odrs);
     //download json file
     var element = document.createElement('a');
     element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(odrData));
@@ -202,14 +213,12 @@ odrApp.updatePreviewFromUI = function(){
     var driftSpeed = parseFloat($("#driftSpeed").val()) || 0;
 
     var odr = odrApp.formatODR(0,bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse);
-    console.log(odr)
-    console.log(bearingTrend,bearing,gainTime,cpaTime,lostTime,cpaRange,speed,driftSpeed,driftCourse)
+
     odrApp.updatePreview(odr)
 }
 
 
 odrApp.updatePreview = function(odr){
-    console.log(odr)
     var html = ""
     html += "<table class='table table-striped mt-3'>"
         html += "<thead>"
@@ -236,8 +245,9 @@ odrApp.updatePreview = function(odr){
 }
 odrApp.viewList = function(){
     var html = "<button class='btn btn-primary' onclick='odrApp.viewList()'>List</button>";
-    html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewPlot()'>Polar Plot</button>";
     html += "<button class='btn btn-primary ml-3' onclick='odrApp.viewGraphs()'>Graphs</button>";
+    html += "<button class='btn btn-primary ml-3' onclick='odrApp.save()'>Download</button>";
+    
     
     html += "<table class='table table-striped mt-3'>"
         html += "<thead>"
@@ -262,12 +272,30 @@ odrApp.viewList = function(){
                 html += "<td>" + (2025*odr.upOdr).toFixed(0) + "</td>"
                 html += "<td>" + (2025*odr.downOdr).toFixed(0) + "</td>"
                 html += "<td>" + (2025*(odr.downOdr+odr.upOdr)/2).toFixed(0) + "</td>"
-                html += "<td><button class='btn btn-danger' onclick='odrApp.removeODR(" + i + ")'>Delete</button></td>"
+                html += "<td><button class='btn btn-primary mr-1' onclick='odrApp.editODR(" + i + ")'>Edit</button><button class='btn btn-danger' onclick='odrApp.removeODR(" + i + ")'>Delete</button></td>"
             html += "</tr>"
         }
         html += "</tbody>"
     html += "</table>"
     $("#displayer").html(html);
+}
+
+odrApp.editODR = function(index){
+    
+    var odr = odrApp.odrs[index];
+   $("#driftSpeed").val(odr.driftSpeed);
+    $("#driftCourse").val(odr.driftCourse);
+    $("#speed").val(odr.speed);
+    $("#bearing").val(odr.bearing);
+    $("#bearingTrend").val(odr.direction);
+    $("#cpaRange").val(odr.cpaRange);
+    $("#cpaTime")[0]._flatpickr.setDate(odr.cpa);
+    $("#gainTime")[0]._flatpickr.setDate(odr.gain);
+    $("#lostTime")[0]._flatpickr.setDate(odr.lost);
+
+    odrApp.updatePreviewFromUI()
+    odrApp.removeODR(index)
+
 }
 
 odrApp.removeODR = function(index){
@@ -470,6 +498,28 @@ odrApp.drawGraph = function(xProp,yProp,xMult,yMult,title,yAxisTitle,xAxisTitle,
     });
 }
 
+odrApp.upload = function(e){
+    console.log(e)
+    var file = e.target.files[0];
+    var reader = new FileReader();
+    console.log(file)
+    reader.onload = function(e) {
+        // The file's text will be printed here
+        console.log(e)
+        console.log(e.target.result)
+        odrApp.odrs = JSON.parse(e.target.result);
+        for(var i=0;i<odrApp.odrs.length;i++){
+            var odr = odrApp.odrs[i];
+            odr.cpa = new Date(odr.cpa)
+            odr.lost = new Date(odr.lost)
+            odr.gain = new Date(odr.gain)
+        }
+        odrApp.viewList()
+    };
+
+    reader.readAsText(file);
+    }
+
 
 odrApp.drawGraphOverTime = function(prop,mult,title,yAxisTitle,canvasId){
     var data = [];
@@ -482,7 +532,6 @@ odrApp.drawGraphOverTime = function(prop,mult,title,yAxisTitle,canvasId){
         data.push({x:(i+1),y:y});
     }
 
-    console.log(data)
     var ctx = document.getElementById(canvasId).getContext('2d');
     var myChart = new Chart(ctx, {
         type: 'scatter',
